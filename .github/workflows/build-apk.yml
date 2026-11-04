@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 60
     env:
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g
+      NPM_CONFIG_LEGACY_PEER_DEPS: "true"
     steps:
       - uses: actions/checkout@v4
       - name: Unpack project zips
@@ -29,7 +30,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Align package versions with the Expo SDK
         working-directory: project
-        run: npx expo install --fix
+        run: npx expo install --fix || echo "expo install --fix failed, continuing"
       - name: Type check
         working-directory: project
         run: npx tsc --noEmit
