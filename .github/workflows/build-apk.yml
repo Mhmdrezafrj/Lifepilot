@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack project zips
+        run: |
+          mkdir project
+          for z in $(ls lifepilot-stage*.zip | sort); do unzip -o -q "$z" -d project; done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install dependencies
+        working-directory: project
+        run: npm install --no-audit --no-fund
+      - name: Align package versions with the Expo SDK
+        working-directory: project
+        run: npx expo install --fix
+      - name: Type check
+        working-directory: project
+        run: npx tsc --noEmit
+      - name: Generate native Android project
+        working-directory: project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build release APK
+        working-directory: project/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LifePilot-apk
+          path: project/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
