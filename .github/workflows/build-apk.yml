@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,7 +20,7 @@ jobs:
       - name: Unpack project zips
         run: |
           mkdir project
-          for z in $(ls lifepilot-stage*.zip | sort); do unzip -o -q "$z" -d project; done
+          for z in $(ls lifepilot-stage*.zip | sort -V); do unzip -o -q "$z" -d project; done
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -46,9 +49,15 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: LifePilot-apk
           path: project/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+      - name: Publish APK to a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: LifePilot build ${{ github.run_number }}
+          files: project/android/app/build/outputs/apk/release/*.apk
